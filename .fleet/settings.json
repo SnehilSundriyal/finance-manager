@@ -1,0 +1,12 @@
+{
+    "plugins": [
+        {
+            "type": "add",
+            "pluginName": "dev.flrp.fleet.atom"
+        },
+        {
+            "type": "add",
+            "pluginName": "io.github.anvell.dune.theme"
+        }
+    ]
+}
