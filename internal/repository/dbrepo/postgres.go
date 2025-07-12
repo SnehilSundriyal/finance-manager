@@ -1,16 +1,148 @@
-package repository
+package dbrepo
 
 import (
-	"database/sql"
+	"context"
+	"errors"
+	"github.com/SnehilSundriyal/finances-manager/internal/models"
+	"github.com/jackc/pgx/v5"
+	"log"
 	"time"
 )
 
 type PostgresDBRepo struct {
-	DB *sql.DB
+	DB *pgx.Conn
 }
 
 const dbTimeout = 3 * time.Second
 
-func (db *PostgresDBRepo) Connect() *sql.DB {
+func (db *PostgresDBRepo) Connect() *pgx.Conn {
 	return db.DB
+}
+
+func (db *PostgresDBRepo) GetMyFinance() (models.PersonalFinance, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		SELECT
+			ID, INCOME, TOTAL_EXPENSES, SAVINGS, CREATED_AT, UPDATED_AT
+		FROM
+			PERSONAL_FINANCE
+`
+
+	row := db.DB.QueryRow(ctx, query)
+
+	var myFinance models.PersonalFinance
+	err := row.Scan(
+			&myFinance.ID,
+			&myFinance.Income,
+			&myFinance.TotalExpenses,
+			&myFinance.Savings,
+			&myFinance.CreatedAt,
+			&myFinance.UpdatedAt,
+		)
+
+	if err != nil {
+		log.Println(err)
+		return models.PersonalFinance{}, err
+	}
+
+	return myFinance, nil
+}
+
+func (db *PostgresDBRepo) AddExpense(expense models.Expense) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		INSERT INTO
+			EXPENSE (name, type, amount, created_at)
+		VALUES
+			($1, $2, $3, $4)
+
+`
+	if expense.Name == "" {
+		return errors.New("the expense name field cannot be empty")
+	}
+
+	if expense.Amount < 0 {
+		return errors.New("the expense amount needs to be valid")
+	}
+
+	_, err := db.DB.Exec(ctx, query,
+			&expense.Name,
+			&expense.Type,
+			&expense.Amount,
+			&expense.CreatedAt,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (db *PostgresDBRepo) GetExpenses() ([]models.Expense, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		SELECT
+			ID, NAME, TYPE, AMOUNT, CREATED_AT
+		FROM
+			EXPENSE
+`
+
+	rows, err := db.DB.Query(ctx, query)
+	if err != nil {
+		return []models.Expense{}, err
+	}
+	defer rows.Close()
+
+	var expenses []models.Expense
+
+	for rows.Next() {
+		var expense models.Expense
+		err := rows.Scan(
+			&expense.ID,
+			&expense.Name,
+			&expense.Type,
+			&expense.Amount,
+			&expense.CreatedAt,
+			)
+		if err != nil {
+			return []models.Expense{}, err
+		}
+
+		expenses = append(expenses, expense)
+	}
+
+	return expenses, nil
+}
+
+func (db *PostgresDBRepo) UpdateFinances(myFinance models.PersonalFinance) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		UPDATE
+			PERSONAL_FINANCE
+		SET
+			TOTAL_EXPENSES = $1, SAVINGS = $2, UPDATED_AT = $3
+		WHERE ID = $4
+`
+
+	_, err := db.DB.Exec(ctx, query,
+			myFinance.TotalExpenses,
+			myFinance.Savings,
+			myFinance.UpdatedAt,
+			myFinance.ID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

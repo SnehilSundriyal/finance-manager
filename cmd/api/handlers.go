@@ -2,23 +2,25 @@ package main
 
 import (
 	"github.com/SnehilSundriyal/finances-manager/internal/models"
-    repository "github.com/SnehilSundriyal/finances-manager/internal/repository/dbrepo"
-
-    //    repository "github.com/SnehilSundriyal/finances-manager/internal/repository/dbrepo"
-    "github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/render"
 	"log"
     "net/http"
-
+	"time"
 )
 
-var	MyFinance models.PersonalFinance
-var Expenses []models.Expense
-const Income = 10000
-
 func (app *application) GetFinances(context *gin.Context) {
-	MyFinance.Income = Income
-	err := render.WriteJSON(context.Writer, MyFinance)
+	MyFinance, err := app.DB.GetMyFinance()
+	if err != nil {
+		context.JSON(http.StatusNoContent, gin.H{
+			"message": "error getting finance",
+			"error": err,
+		})
+
+		return
+	}
+
+	err = render.WriteJSON(context.Writer, &MyFinance)
 	if err != nil {
 		log.Println(err)
 		return
@@ -27,18 +29,75 @@ func (app *application) GetFinances(context *gin.Context) {
 
 func (app *application) CreateNewExpense(context *gin.Context) {
 	var expense models.Expense
+	err := context.ShouldBindJSON(&expense)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Error binding request as json",
+			"error": err.Error(),
+		})
+		return
+	}
 
-	expense = repository.AddExpense(len(Expenses) + 1)
+	err = app.DB.AddExpense(expense)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": err,
+			"error": err.Error(),
+		})
+		return
+	}
+
+	MyFinance, err := app.DB.GetMyFinance()
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to get current finances",
+			"error": err.Error(),
+		})
+		return
+	}
+
 	MyFinance.TotalExpenses += expense.Amount
-	MyFinance.Savings -= expense.Amount
+	MyFinance.Savings = MyFinance.Income - MyFinance.TotalExpenses
 
-	Expenses = append(Expenses, expense)
+	MyFinance.UpdatedAt = time.Now()
+
+	err = app.DB.UpdateFinances(MyFinance)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "Failed to update finances",
+			"error": err.Error(),
+		})
+		return
+	}
 
 	context.JSON(http.StatusCreated, gin.H{
-		"message": "new expense added succesfully",
-		"error": nil,
+		"message": "new expense added succesfully & finances updated",
+		"new_expense_name": expense.Name,
+		"new_expense_type": expense.Type,
+		"new_expense_amount": expense.Amount,
 	})
 }
 
+func (app *application) GetExpenses(context *gin.Context) {
+	var Expenses []models.Expense
+	var err error
+
+	Expenses, err = app.DB.GetExpenses()
+	if err != nil {
+		context.JSON(http.StatusNoContent, gin.H{
+			"message": "error getting expenses",
+			"error": err,
+		})
+
+		return
+	}
+
+	err = render.WriteJSON(context.Writer, &Expenses)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+}
 
 

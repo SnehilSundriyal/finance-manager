@@ -7,8 +7,10 @@ import (
 func (app *application) routes() *gin.Engine {
 	router := gin.Default()
 
-	router.GET("/", app.GetFinances)
-	router.POST("/", app.CreateNewExpense)
+	router.GET("/my-finances", app.GetFinances)
+
+	router.GET("/expenses", app.GetExpenses)
+	router.POST("/expenses", app.CreateNewExpense)
 
 	return router
 }

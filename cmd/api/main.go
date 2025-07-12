@@ -1,33 +1,43 @@
 package main
 
 import (
-	// "context"
-	// "github.com/jackc/pgx/v5/pgxpool"
-	// "github.com/joho/godotenv"
+	"context"
+	"github.com/SnehilSundriyal/finances-manager/internal/repository"
+	"github.com/SnehilSundriyal/finances-manager/internal/repository/dbrepo"
+	"github.com/gin-gonic/gin"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/joho/godotenv"
 	"log"
-	// "os"
+	"os"
 )
 
 const port = ":8080"
 type application struct {
-	DB string
+	DB 		repository.DatabaseRepo
 }
 
 func main() {
-//	_ = godotenv.Load()
+	_ = godotenv.Load()
 	var app application
+
+	gin.SetMode(gin.ReleaseMode)
+
+	db, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL")) // DATABASE_URL="postgres://<YOUR_USERNAME_HERE>:<YOUR_PASSWORD_HERE>@localhost/postgres"
+	if err != nil {
+		log.Println("Failed to connect to database")
+		log.Fatal(err)
+	}
+	app.DB = &dbrepo.PostgresDBRepo{DB: db}
+	defer app.DB.Connect().Close(context.Background())
+
+	log.Println("Connected to database....")
 
 	server := app.routes()
 
-//	dbPool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL")) // DATABASE_URL="postgres://YOUR_USERNAME:YOUR_PASSWORD@localhost/postgres"
-//	if err != nil {
-//		log.Fatal("Failed to establish a connection to the database with error:", err)
-//	}
-//	defer dbPool.Close()
-
 	log.Println("Starting GO application on port", port)
 
-	err := server.Run(port)
+	err = server.Run(port)
 	if err != nil {
 		log.Fatal(err)
 	}

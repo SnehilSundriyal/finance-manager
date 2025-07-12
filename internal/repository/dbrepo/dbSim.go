@@ -1,4 +1,4 @@
-package repository
+package dbrepo
 
 import (
 	"github.com/SnehilSundriyal/finances-manager/internal/models"

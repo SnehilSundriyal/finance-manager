@@ -8,7 +8,6 @@ import (
 type PersonalFinance struct {
 	ID 				int 		`json:"-"`
 	Income 			int 		`json:"income"`
-	Expenses 		[]Expense	`json:"expenses"`
 	TotalExpenses 	int 		`json:"total_expenses"`
 	Savings 		int			`json:"savings"`
 	CreatedAt 		time.Time 	`json:"-"`
@@ -24,5 +23,5 @@ type Expense struct {
 	CreatedAt 	time.Time 	`json:"created_at"`
 }
 
-var ExpenseTypes = []string{"Food", "Services", "Travel", "Splitwise", "Entertainment", "Miscellaneous"}
+var ExpenseTypes = []string{"Food", "Services", "Travel", "Splitwise", "Entertainment", "Investment", "Miscellaneous"}
 
