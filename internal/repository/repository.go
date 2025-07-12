@@ -8,7 +8,9 @@ import (
 type DatabaseRepo interface {
 	Connect() *pgx.Conn
 	GetMyFinance() (models.PersonalFinance, error)
-	AddExpense(expense models.Expense) error
 	GetExpenses() ([]models.Expense, error)
-	UpdateFinances(myFinance models.PersonalFinance) error
+	AddExpense(expense models.Expense) error
+	UpdateFinancesAfterExpense(myFinance models.PersonalFinance, expense int, originalExpense int) (models.PersonalFinance, error)
+	UpdateExpense(expense models.Expense) (models.Expense, error)
+	GetExpenseByID(id int) (models.Expense, error)
 }

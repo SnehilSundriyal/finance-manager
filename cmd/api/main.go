@@ -23,6 +23,7 @@ func main() {
 
 	gin.SetMode(gin.ReleaseMode)
 
+	// connecting to postgres database
 	db, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL")) // DATABASE_URL="postgres://<YOUR_USERNAME_HERE>:<YOUR_PASSWORD_HERE>@localhost/postgres"
 	if err != nil {
 		log.Println("Failed to connect to database")
@@ -33,6 +34,8 @@ func main() {
 
 	log.Println("Connected to database....")
 
+
+	// starting go server
 	server := app.routes()
 
 	log.Println("Starting GO application on port", port)

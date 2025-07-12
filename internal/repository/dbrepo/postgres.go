@@ -24,10 +24,8 @@ func (db *PostgresDBRepo) GetMyFinance() (models.PersonalFinance, error) {
 	defer cancel()
 
 	query := `
-		SELECT
-			ID, INCOME, TOTAL_EXPENSES, SAVINGS, CREATED_AT, UPDATED_AT
-		FROM
-			PERSONAL_FINANCE
+		SELECT ID, INCOME, TOTAL_EXPENSES, SAVINGS, CREATED_AT, UPDATED_AT
+		FROM PERSONAL_FINANCE
 `
 
 	row := db.DB.QueryRow(ctx, query)
@@ -55,10 +53,8 @@ func (db *PostgresDBRepo) AddExpense(expense models.Expense) error {
 	defer cancel()
 
 	query := `
-		INSERT INTO
-			EXPENSE (name, type, amount, created_at)
-		VALUES
-			($1, $2, $3, $4)
+		INSERT INTO EXPENSE (name, type, amount, created_at)
+		VALUES ($1, $2, $3, $4)
 
 `
 	if expense.Name == "" {
@@ -88,10 +84,8 @@ func (db *PostgresDBRepo) GetExpenses() ([]models.Expense, error) {
 	defer cancel()
 
 	query := `
-		SELECT
-			ID, NAME, TYPE, AMOUNT, CREATED_AT
-		FROM
-			EXPENSE
+		SELECT ID, NAME, TYPE, AMOUNT, CREATED_AT
+		FROM EXPENSE
 `
 
 	rows, err := db.DB.Query(ctx, query)
@@ -121,15 +115,18 @@ func (db *PostgresDBRepo) GetExpenses() ([]models.Expense, error) {
 	return expenses, nil
 }
 
-func (db *PostgresDBRepo) UpdateFinances(myFinance models.PersonalFinance) error {
+func (db *PostgresDBRepo) UpdateFinancesAfterExpense(myFinance models.PersonalFinance, expense int, originalExpense int) (models.PersonalFinance, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
+	myFinance.TotalExpenses += expense
+	myFinance.TotalExpenses -= originalExpense
+	myFinance.Savings = myFinance.Income - myFinance.TotalExpenses
+	myFinance.UpdatedAt = time.Now()
+
 	query := `
-		UPDATE
-			PERSONAL_FINANCE
-		SET
-			TOTAL_EXPENSES = $1, SAVINGS = $2, UPDATED_AT = $3
+		UPDATE PERSONAL_FINANCE
+		SET TOTAL_EXPENSES = $1, SAVINGS = $2, UPDATED_AT = $3
 		WHERE ID = $4
 `
 
@@ -141,8 +138,61 @@ func (db *PostgresDBRepo) UpdateFinances(myFinance models.PersonalFinance) error
 		)
 
 	if err != nil {
-		return err
+		return models.PersonalFinance{}, err
 	}
 
-	return nil
+	return myFinance, nil
+}
+
+func (db *PostgresDBRepo) GetExpenseByID(id int) (models.Expense, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+
+	query := `
+		SELECT ID, NAME, TYPE, AMOUNT, CREATED_AT
+		FROM EXPENSE
+		WHERE ID = $1
+`
+
+	row := db.DB.QueryRow(ctx, query, id)
+
+	var expense models.Expense
+
+	err := row.Scan(
+			&expense.ID,
+			&expense.Name,
+			&expense.Type,
+			&expense.Amount,
+			&expense.CreatedAt,
+		)
+	if err != nil {
+		return models.Expense{}, err
+	}
+
+	return expense, nil
+
+}
+
+func (db *PostgresDBRepo) UpdateExpense(expense models.Expense) (models.Expense, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		UPDATE EXPENSE
+		SET NAME = $1, TYPE = $2, AMOUNT = $3
+		WHERE ID = $4
+`
+
+	_, err := db.DB.Exec(ctx, query,
+			expense.Name,
+			expense.Type,
+			expense.Amount,
+			expense.ID,
+		)
+	if err != nil {
+		return models.Expense{}, err
+	}
+
+	return expense, nil
 }

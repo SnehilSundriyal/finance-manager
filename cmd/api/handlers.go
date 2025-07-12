@@ -6,7 +6,6 @@ import (
 	"github.com/gin-gonic/gin/render"
 	"log"
     "net/http"
-	"time"
 )
 
 func (app *application) GetFinances(context *gin.Context) {
@@ -56,12 +55,7 @@ func (app *application) CreateNewExpense(context *gin.Context) {
 		return
 	}
 
-	MyFinance.TotalExpenses += expense.Amount
-	MyFinance.Savings = MyFinance.Income - MyFinance.TotalExpenses
-
-	MyFinance.UpdatedAt = time.Now()
-
-	err = app.DB.UpdateFinances(MyFinance)
+	MyFinance, err = app.DB.UpdateFinancesAfterExpense(MyFinance, expense.Amount, 0)
 	if err != nil {
 		context.JSON(http.StatusBadRequest, gin.H{
 			"message": "Failed to update finances",
@@ -98,6 +92,88 @@ func (app *application) GetExpenses(context *gin.Context) {
 		return
 	}
 
+}
+
+func (app *application) GetSingleExpense(context *gin.Context) {
+	var expense models.Expense
+	err := context.ShouldBindJSON(&expense)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error binding json",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	expense, err = app.DB.GetExpenseByID(expense.ID)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error getting expense",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = render.WriteJSON(context.Writer, &expense)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+}
+
+func (app *application) UpdateSingleExpense(context *gin.Context) {
+	var expense models.Expense
+	err := context.ShouldBindJSON(&expense)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error binding json",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	originalExpense, err := app.DB.GetExpenseByID(expense.ID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to get original expense",
+			"error": err.Error(),
+			})
+		return
+	}
+
+	MyFinance, err := app.DB.GetMyFinance()
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to get current finances",
+			"error": err.Error(),
+			})
+		return
+	}
+
+	expense, err = app.DB.UpdateExpense(expense)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error updating expense",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	MyFinance, err = app.DB.UpdateFinancesAfterExpense(MyFinance, expense.Amount, originalExpense.Amount)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{
+			"message": "Failed to get update finances",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"message": "expense updated succesfully & finances updated",
+		"new_expense_name": expense.Name,
+		"new_expense_type": expense.Type,
+		"new_expense_amount": expense.Amount,
+	})
 }
 
 

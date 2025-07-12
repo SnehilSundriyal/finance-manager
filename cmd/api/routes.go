@@ -12,5 +12,8 @@ func (app *application) routes() *gin.Engine {
 	router.GET("/expenses", app.GetExpenses)
 	router.POST("/expenses", app.CreateNewExpense)
 
+	router.GET("/expense", app.GetSingleExpense)
+	router.PATCH("/expense", app.UpdateSingleExpense)
+
 	return router
 }
