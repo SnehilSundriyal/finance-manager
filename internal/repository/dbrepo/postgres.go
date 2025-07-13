@@ -115,12 +115,12 @@ func (db *PostgresDBRepo) GetExpenses() ([]models.Expense, error) {
 	return expenses, nil
 }
 
-func (db *PostgresDBRepo) UpdateFinancesAfterExpense(myFinance models.PersonalFinance, expense int, originalExpense int) (models.PersonalFinance, error) {
+func (db *PostgresDBRepo) UpdateFinancesAfterExpense(myFinance models.PersonalFinance, addedAmount int,deletedAmount int) (models.PersonalFinance, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
-	myFinance.TotalExpenses += expense
-	myFinance.TotalExpenses -= originalExpense
+	myFinance.TotalExpenses += addedAmount
+	myFinance.TotalExpenses -= deletedAmount
 	myFinance.Savings = myFinance.Income - myFinance.TotalExpenses
 	myFinance.UpdatedAt = time.Now()
 
@@ -195,4 +195,22 @@ func (db *PostgresDBRepo) UpdateExpense(expense models.Expense) (models.Expense,
 	}
 
 	return expense, nil
+}
+
+func (db *PostgresDBRepo) DeleteExpense(id int) error {
+	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
+	defer cancel()
+
+	query := `
+		DELETE FROM EXPENSE
+		WHERE ID = $1
+`
+
+	_, err := db.DB.Exec(ctx, query, id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }

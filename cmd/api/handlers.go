@@ -176,4 +176,53 @@ func (app *application) UpdateSingleExpense(context *gin.Context) {
 	})
 }
 
+func (app *application) DeleteSingleExpense(context *gin.Context) {
+	var expense models.Expense
+	err := context.ShouldBindJSON(&expense)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error binding json",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	originalExpense, err := app.DB.GetExpenseByID(expense.ID)
+
+	var myFinance models.PersonalFinance
+	myFinance, err = app.DB.GetMyFinance()
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error getting finance",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	myFinance, err = app.DB.UpdateFinancesAfterExpense(myFinance, 0, originalExpense.Amount)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error updating total expenses",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	err = app.DB.DeleteExpense(expense.ID)
+	if err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{
+			"message": "error binding json",
+			"error": err.Error(),
+		})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{
+		"message": "expense deleted successfully & finances updated",
+		"deleted_expense_name": originalExpense.Name,
+		"deleted_expense_type": originalExpense.Type,
+		"deleted_expense_amount": originalExpense.Amount,
+	})
+}
+
 

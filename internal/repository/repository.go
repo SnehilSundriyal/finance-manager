@@ -10,7 +10,8 @@ type DatabaseRepo interface {
 	GetMyFinance() (models.PersonalFinance, error)
 	GetExpenses() ([]models.Expense, error)
 	AddExpense(expense models.Expense) error
-	UpdateFinancesAfterExpense(myFinance models.PersonalFinance, expense int, originalExpense int) (models.PersonalFinance, error)
+	UpdateFinancesAfterExpense(myFinance models.PersonalFinance, addedAmount int,deletedAmount int) (models.PersonalFinance, error)
 	UpdateExpense(expense models.Expense) (models.Expense, error)
 	GetExpenseByID(id int) (models.Expense, error)
+	DeleteExpense(id int) error
 }
